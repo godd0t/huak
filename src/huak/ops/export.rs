@@ -117,11 +117,9 @@ fn process_dependencies(
     // Check if all groups in include and exclude exist
     let all_groups: HashSet<_> = all_dependencies.keys().cloned().collect();
     for group in include_set.union(&exclude_set) {
-        // if group is 'required', skip
-        if group == "required" {
-            continue;
-        } else if !all_groups.contains(group) {
-            return Err(Error::DependencyGroupNotFound(group.to_string()));
+        // if all_groups.contains(group) where group is not "required"
+        if group != "required" && !all_groups.contains(group) {
+            return Err(Error::DependencyGroupNotFound(group.clone()));
         }
     }
 
