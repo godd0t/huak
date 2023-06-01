@@ -79,9 +79,6 @@ fn process_dependencies(include: &[String], exclude: &[String], dependencies: &V
     let mut include_set: HashSet<_> = include.iter().cloned().collect();
     let exclude_set: HashSet<_> = exclude.iter().cloned().collect();
 
-    // Add "required" to the include set by default
-    include_set.insert("required".to_string());
-
     // Create a combined IndexMap of all dependencies
     let mut all_dependencies: IndexMap<String, Vec<Requirement>> = IndexMap::new();
     for dep in dependencies {
@@ -111,17 +108,12 @@ fn process_dependencies(include: &[String], exclude: &[String], dependencies: &V
     let processed_dependencies: Vec<Dependency> = all_dependencies
         .iter()
         .filter_map(|(group, deps)| {
-            if include.is_empty() && exclude.contains(group) {
-                None
-            } else if (exclude.is_empty() && include.contains(group)) || (include.contains(group) && !exclude.contains(group)) {
-                Some(deps.iter().map(Dependency::from).collect::<Vec<_>>())
-            } else if include.is_empty() && exclude.is_empty() {
-                // Add all dependencies if neither include nor exclude is specified
-                Some(deps.iter().map(Dependency::from).collect::<Vec<_>>())
-            } else {
-                None
-            }
-        })
+    if (include.is_empty() && !exclude.contains(group)) || (!include.is_empty() && include.contains(group) && !exclude.contains(group)) {
+        Some(deps.iter().map(Dependency::from).collect::<Vec<_>>())
+    } else {
+        None
+    }
+})
 
         .flatten()
         .collect();
