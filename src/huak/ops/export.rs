@@ -1,10 +1,10 @@
-use crate::{Config, HuakResult, Error, dependency::Dependency};
-use std::fs::File;
-use std::io::Write;
-use std::collections::HashSet;
-use std::path::PathBuf;
+use crate::{dependency::Dependency, Config, Error, HuakResult};
 use indexmap::IndexMap;
 use pep508_rs::Requirement;
+use std::collections::HashSet;
+use std::fs::File;
+use std::io::Write;
+use std::path::PathBuf;
 
 pub struct ExportOptions {
     pub include: Option<String>,
@@ -30,7 +30,9 @@ pub fn export_dependencies_to_file(
 
     if let Some(parent_dir) = output_file_path.parent() {
         if !parent_dir.exists() {
-            return Err(Error::OutputFilePathDoesNotExist(parent_dir.to_string_lossy().into_owned()));
+            return Err(Error::OutputFilePathDoesNotExist(
+                parent_dir.to_string_lossy().into_owned(),
+            ));
         }
     }
 
@@ -41,24 +43,39 @@ pub fn export_dependencies_to_file(
         return Err(Error::ProjectDependenciesNotFound);
     }
 
-    let dependencies: Vec<Dependency> = dependencies.unwrap_or(&[])
+    let dependencies: Vec<Dependency> = dependencies
+        .unwrap_or(&[])
         .iter()
         .map(Dependency::from)
         .collect();
 
-    let include = options.include.as_deref().map(|s| s.split(',').map(String::from).collect::<Vec<_>>());
-    let exclude = options.exclude.as_deref().map(|s| s.split(',').map(String::from).collect::<Vec<_>>());
+    let include = options
+        .include
+        .as_deref()
+        .map(|s| s.split(',').map(String::from).collect::<Vec<_>>());
+    let exclude = options
+        .exclude
+        .as_deref()
+        .map(|s| s.split(',').map(String::from).collect::<Vec<_>>());
 
     let include_slice = include.as_deref().unwrap_or(&[]);
     let exclude_slice = exclude.as_deref().unwrap_or(&[]);
 
-    let mut all_dependencies = if include_slice.contains(&"required".to_string()) && !exclude_slice.contains(&"required".to_string()) {
+    let mut all_dependencies = if include_slice
+        .contains(&"required".to_string())
+        && !exclude_slice.contains(&"required".to_string())
+    {
         dependencies.clone()
     } else {
         vec![]
     };
 
-    let processed_dependencies = process_dependencies(include_slice, exclude_slice, &dependencies, &optional_dependencies)?;
+    let processed_dependencies = process_dependencies(
+        include_slice,
+        exclude_slice,
+        &dependencies,
+        &optional_dependencies,
+    )?;
     all_dependencies.extend(processed_dependencies);
 
     let mut output_file = match File::create(&output_file_path) {
@@ -74,18 +91,27 @@ pub fn export_dependencies_to_file(
     Ok(())
 }
 
-
-fn process_dependencies(include: &[String], exclude: &[String], dependencies: &Vec<Dependency>, optional_dependencies: &Option<&IndexMap<String, Vec<Requirement>>>) -> HuakResult<Vec<Dependency>> {
-    let mut include_set: HashSet<_> = include.iter().cloned().collect();
+fn process_dependencies(
+    include: &[String],
+    exclude: &[String],
+    dependencies: &Vec<Dependency>,
+    optional_dependencies: &Option<&IndexMap<String, Vec<Requirement>>>,
+) -> HuakResult<Vec<Dependency>> {
+    let include_set: HashSet<_> = include.iter().cloned().collect();
     let exclude_set: HashSet<_> = exclude.iter().cloned().collect();
 
     // Create a combined IndexMap of all dependencies
-    let mut all_dependencies: IndexMap<String, Vec<Requirement>> = IndexMap::new();
+    let mut all_dependencies: IndexMap<String, Vec<Requirement>> =
+        IndexMap::new();
     for dep in dependencies {
-        all_dependencies.insert(dep.name().parse().unwrap(), vec![dep.requirement().clone()]);
+        all_dependencies.insert(
+            dep.name().parse().unwrap(),
+            vec![dep.requirement().clone()],
+        );
     }
     if let Some(opt_deps) = optional_dependencies {
-        all_dependencies.extend(opt_deps.iter().map(|(k, v)| (k.clone(), v.clone())));
+        all_dependencies
+            .extend(opt_deps.iter().map(|(k, v)| (k.clone(), v.clone())));
     }
 
     // Check if all groups in include and exclude exist
@@ -100,7 +126,8 @@ fn process_dependencies(include: &[String], exclude: &[String], dependencies: &V
     }
 
     // Check if a group is both included and excluded
-    let conflict_groups: Vec<String> = include_set.intersection(&exclude_set).cloned().collect();
+    let conflict_groups: Vec<String> =
+        include_set.intersection(&exclude_set).cloned().collect();
     if !conflict_groups.is_empty() {
         return Err(Error::DependencyGroupConflict(conflict_groups.join(", ")));
     }
@@ -108,19 +135,21 @@ fn process_dependencies(include: &[String], exclude: &[String], dependencies: &V
     let processed_dependencies: Vec<Dependency> = all_dependencies
         .iter()
         .filter_map(|(group, deps)| {
-    if (include.is_empty() && !exclude.contains(group)) || (!include.is_empty() && include.contains(group) && !exclude.contains(group)) {
-        Some(deps.iter().map(Dependency::from).collect::<Vec<_>>())
-    } else {
-        None
-    }
-})
-
+            if (include.is_empty() && !exclude.contains(group))
+                || (!include.is_empty()
+                    && include.contains(group)
+                    && !exclude.contains(group))
+            {
+                Some(deps.iter().map(Dependency::from).collect::<Vec<_>>())
+            } else {
+                None
+            }
+        })
         .flatten()
         .collect();
 
     Ok(processed_dependencies)
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -135,7 +164,7 @@ mod tests {
             test_resources_dir_path().join("mock-project"),
             dir.path().join("mock-project"),
         )
-            .unwrap();
+        .unwrap();
 
         let root = dir.path().join("mock-project");
         let cwd = root.to_path_buf();
@@ -148,18 +177,28 @@ mod tests {
 
         export_dependencies_to_file(&config, &options).unwrap();
 
-        let requirements_txt =
-            std::fs::read_to_string(config.workspace().root().join("requirements.txt")).unwrap();
-        let requirements: HashSet<String> = requirements_txt.lines().map(|s| s.to_string()).collect();
+        let requirements_txt = std::fs::read_to_string(
+            config.workspace().root().join("requirements.txt"),
+        )
+        .unwrap();
+        let requirements: HashSet<String> =
+            requirements_txt.lines().map(|s| s.to_string()).collect();
 
         let metadata = config.workspace().current_local_metadata().unwrap();
         let dependencies = metadata.metadata().dependencies();
         let optional_dependencies = metadata.metadata().optional_dependencies();
-        let dependencies: Vec<Dependency> = dependencies.unwrap_or(&[])
+        let dependencies: Vec<Dependency> = dependencies
+            .unwrap_or(&[])
             .iter()
             .map(|dep| Dependency::from(dep))
             .collect();
-        let processed_dependencies = process_dependencies(&[], &[], &dependencies, &optional_dependencies).unwrap();
+        let processed_dependencies = process_dependencies(
+            &[],
+            &[],
+            &dependencies,
+            &optional_dependencies,
+        )
+        .unwrap();
 
         let mut metadata_dependencies: HashSet<String> = HashSet::new();
         for dep in processed_dependencies {
@@ -176,7 +215,7 @@ mod tests {
             test_resources_dir_path().join("mock-project"),
             dir.path().join("mock-project"),
         )
-            .unwrap();
+        .unwrap();
         let root = dir.path().join("mock-project");
         let cwd = root.to_path_buf();
         let config = test_config(root, cwd, Verbosity::Quiet);

@@ -2,6 +2,7 @@ mod activate;
 mod add;
 mod build;
 mod clean;
+mod export;
 mod format;
 mod init;
 mod install;
@@ -14,7 +15,6 @@ mod run;
 mod test;
 mod update;
 mod version;
-mod export;
 
 #[allow(unused_imports)]
 use crate::{
