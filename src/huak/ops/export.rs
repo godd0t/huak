@@ -43,7 +43,7 @@ pub fn export_dependencies_to_file(
 
     let dependencies: Vec<Dependency> = dependencies.unwrap_or(&[])
         .iter()
-        .map(|dep| Dependency::from(dep))
+        .map(Dependency::from)
         .collect();
 
     let include = options.include.as_deref().map(|s| s.split(',').map(String::from).collect::<Vec<_>>());
@@ -113,17 +113,16 @@ fn process_dependencies(include: &[String], exclude: &[String], dependencies: &V
         .filter_map(|(group, deps)| {
             if include.is_empty() && exclude.contains(group) {
                 None
-            } else if exclude.is_empty() && include.contains(group) {
-                Some(deps.iter().map(|dep| Dependency::from(dep)).collect::<Vec<_>>())
-            } else if include.contains(group) && !exclude.contains(group) {
-                Some(deps.iter().map(|dep| Dependency::from(dep)).collect::<Vec<_>>())
+            } else if (exclude.is_empty() && include.contains(group)) || (include.contains(group) && !exclude.contains(group)) {
+                Some(deps.iter().map(Dependency::from).collect::<Vec<_>>())
             } else if include.is_empty() && exclude.is_empty() {
                 // Add all dependencies if neither include nor exclude is specified
-                Some(deps.iter().map(|dep| Dependency::from(dep)).collect::<Vec<_>>())
+                Some(deps.iter().map(Dependency::from).collect::<Vec<_>>())
             } else {
                 None
             }
         })
+
         .flatten()
         .collect();
 
@@ -165,9 +164,9 @@ mod tests {
         let dependencies = metadata.metadata().dependencies();
         let optional_dependencies = metadata.metadata().optional_dependencies();
         let dependencies: Vec<Dependency> = dependencies.unwrap_or(&[])
-        .iter()
-        .map(|dep| Dependency::from(dep))
-        .collect();
+            .iter()
+            .map(|dep| Dependency::from(dep))
+            .collect();
         let processed_dependencies = process_dependencies(&[], &[], &dependencies, &optional_dependencies).unwrap();
 
         let mut metadata_dependencies: HashSet<String> = HashSet::new();
