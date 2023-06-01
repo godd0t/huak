@@ -8,6 +8,10 @@ pub type HuakResult<T> = Result<T, Error>;
 pub enum Error {
     #[error("a problem with argument parsing occurred: {0}")]
     ClapError(#[from] clap::Error),
+    #[error("dependency group(s): {0}, cannot be both included and excluded")]
+    DependencyGroupConflict(String),
+    #[error("dependency group(s) not found: {0}")]
+    DependencyGroupNotFound(String),
     #[error("a directory already exists: {0}")]
     DirectoryExists(PathBuf),
     #[error("a problem with the environment occurred: {0}")]
@@ -28,6 +32,8 @@ pub enum Error {
     JSONSerdeError(#[from] serde_json::Error),
     #[error("a problem with io occurred: {0}")]
     IOError(#[from] io::Error),
+    #[error("output file path does not exist: {0}")]
+    OutputFilePathDoesNotExist(String),
     #[error("a problem occurred with PEP440 parsing: {0}")]
     PEP440Error(#[from] pep440_rs::Pep440Error),
     #[error("a problem occurred with PEP508 parsing: {0}")]
@@ -40,6 +46,8 @@ pub enum Error {
     PackageVersionNotFound,
     #[error("a project already exists")]
     ProjectFound,
+    #[error("project dependencies could not be found")]
+    ProjectDependenciesNotFound,
     #[error("a python interpreter could not be found")]
     PythonNotFound,
     #[error("a python environment could not be found")]

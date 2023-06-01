@@ -5,12 +5,12 @@ use huak::{
     ops::{
         activate_python_environment, add_project_dependencies,
         add_project_optional_dependencies, build_project, clean_project,
-        display_project_version, format_project, init_app_project,
+        display_project_version, export_dependencies_to_file, format_project, init_app_project,
         init_lib_project, install_project_dependencies, lint_project,
         list_python, new_app_project, new_lib_project, publish_project,
         remove_project_dependencies, run_command_str, test_project,
         update_project_dependencies, use_python, AddOptions, BuildOptions,
-        CleanOptions, FormatOptions, LintOptions, PublishOptions,
+        CleanOptions, ExportOptions, FormatOptions, LintOptions, PublishOptions,
         RemoveOptions, TestOptions, UpdateOptions,
     },
     Config, Error as HuakError, HuakResult, InstallOptions, TerminalOptions,
@@ -65,6 +65,18 @@ enum Commands {
         #[arg(long, required = false)]
         /// Remove all __pycache__ directories.
         include_pycache: bool,
+    },
+    /// Export dependencies to a file.
+    Export {
+        /// The output file to write the dependencies to.
+        #[arg(long, default_value = "requirements.txt")]
+        output: String,
+        /// Include specific dependencies in the export.
+        #[arg(long)]
+        include: Option<String>,
+        /// Exclude specific dependencies from the export.
+        #[arg(long)]
+        exclude: Option<String>,
     },
     /// Generates a shell completion script for supported shells.
     Completion {
@@ -238,6 +250,18 @@ impl Cli {
                 };
                 clean(&config, &options)
             }
+            Commands::Export {
+                output,
+                include,
+                exclude,
+            } => {
+                let options = ExportOptions {
+                    include,
+                    exclude,
+                    output_file: output,
+                };
+                export(&config, &options)
+            }
             Commands::Completion {
                 shell,
                 install,
@@ -388,6 +412,10 @@ fn build(config: &Config, options: &BuildOptions) -> HuakResult<()> {
 
 fn clean(config: &Config, options: &CleanOptions) -> HuakResult<()> {
     clean_project(config, options)
+}
+
+fn export(config: &Config, options: &ExportOptions) -> HuakResult<()> {
+    export_dependencies_to_file(config, options)
 }
 
 fn fix(config: &Config, options: &LintOptions) -> HuakResult<()> {

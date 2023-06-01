@@ -6,10 +6,10 @@
 ## Contents
 
 1. [Getting started](#getting-started)
-1. [Manage your dependencies](#manage-your-dependencies)
-1. [Support more of your workflow](#support-more-of-your-workflow)
-1. [Distribute your project](#distribute-your-project)
-1. [Configure Huak](#configure-huak)
+2. [Manage your dependencies](#manage-your-dependencies)
+3. [Support more of your workflow](#support-more-of-your-workflow)
+4. [Distribute your project](#distribute-your-project)
+5. [Configure Huak](#configure-huak)
 
 ## Getting started
 
@@ -117,6 +117,39 @@ Or everything.
 my-project on master 📦 v0.0.1 via 🐍 v3.11.0 
 ❯ huak update
 ```
+
+### Export dependencies
+
+To export the project's dependencies to a requirements.txt file use the `export` command.
+
+
+- Export all dependencies and optional dependencies. This is the default behavior.
+
+    ```zsh
+    my-project on master 📦 v0.0.1 via 🐍 v3.11.0
+    ❯ huak export
+    ```
+
+- Specify output file with `--output'.
+
+    ```zsh
+    my-project on master 📦 v0.0.1 via 🐍 v3.11.0
+    ❯ huak export --output-file requirements.txt
+    ```
+
+- Export only the dependencies that are mentioned in the `--include` option.
+
+    ```zsh
+    my-project on master 📦 v0.0.1 via 🐍 v3.11.0
+    ❯ huak export --include dev
+    ```
+
+- Export all dependencies except those mentioned in the `--exclude` option.
+
+    ```zsh
+    my-project on master 📦 v0.0.1 via 🐍 v3.11.0
+    ❯ huak export --exclude dev
+    ```
 
 ### Remove dependencies
 

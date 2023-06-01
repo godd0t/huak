@@ -14,6 +14,7 @@ mod run;
 mod test;
 mod update;
 mod version;
+mod export;
 
 #[allow(unused_imports)]
 use crate::{
@@ -31,6 +32,7 @@ pub use add::{
 };
 pub use build::{build_project, BuildOptions};
 pub use clean::{clean_project, CleanOptions};
+pub use export::{export_dependencies_to_file, ExportOptions};
 pub use format::{format_project, FormatOptions};
 pub use init::{init_app_project, init_lib_project};
 pub use install::install_project_dependencies;
