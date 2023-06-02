@@ -1,7 +1,5 @@
 use crate::{dependency::Dependency, Config, Error, HuakResult};
 use indexmap::IndexMap;
-use pep508_rs::Requirement;
-use std::collections::HashSet;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
@@ -49,6 +47,23 @@ pub fn export_dependencies_to_file(
         .map(Dependency::from)
         .collect();
 
+    let optional_dependencies = metadata.metadata().optional_dependencies();
+
+    let mut all_dependencies: IndexMap<String, Vec<Dependency>> =
+        IndexMap::new();
+    for dep in &dependencies {
+        all_dependencies
+            .entry("required".to_string())
+            .or_insert_with(Vec::new)
+            .push(dep.clone());
+    }
+    if let Some(opt_deps) = optional_dependencies {
+        for (group, reqs) in opt_deps {
+            let deps = reqs.iter().map(Dependency::from).collect();
+            all_dependencies.insert(group.clone(), deps);
+        }
+    }
+
     let include = options
         .include
         .as_deref()
@@ -61,31 +76,17 @@ pub fn export_dependencies_to_file(
     let include_slice = include.as_deref().unwrap_or(&[]);
     let exclude_slice = exclude.as_deref().unwrap_or(&[]);
 
-    let mut all_dependencies = if include_slice
-        .contains(&"required".to_string())
-        && !exclude_slice.contains(&"required".to_string())
-    {
-        dependencies.clone()
-    } else {
-        vec![]
-    };
-
-    let processed_dependencies = process_dependencies(
-        include_slice,
-        exclude_slice,
-        &dependencies,
-        &optional_dependencies,
-    )?;
-    all_dependencies.extend(processed_dependencies);
+    let processed_dependencies =
+        process_dependencies(include_slice, exclude_slice, &all_dependencies)?;
 
     let mut output_file = match File::create(&output_file_path) {
         Ok(file) => file,
         Err(e) => return Err(Error::IOError(e)),
     };
 
-    for dependency in all_dependencies {
+    for dependency in processed_dependencies {
         let line = format!("{}\n", dependency);
-        write!(output_file, "{}", line).unwrap();
+        write!(output_file, "{}", line)?;
     }
 
     Ok(())
@@ -94,58 +95,27 @@ pub fn export_dependencies_to_file(
 fn process_dependencies(
     include: &[String],
     exclude: &[String],
-    dependencies: &Vec<Dependency>,
-    optional_dependencies: &Option<&IndexMap<String, Vec<Requirement>>>,
+    all_dependencies: &IndexMap<String, Vec<Dependency>>,
 ) -> HuakResult<Vec<Dependency>> {
-    let include_set: HashSet<_> = include.iter().cloned().collect();
-    let exclude_set: HashSet<_> = exclude.iter().cloned().collect();
+    // We initialize an empty vector to hold the dependencies that pass the filters.
+    let mut processed_dependencies: Vec<Dependency> = Vec::new();
 
-    // Create a combined IndexMap of all dependencies
-    let mut all_dependencies: IndexMap<String, Vec<Requirement>> =
-        IndexMap::new();
-    for dep in dependencies {
-        all_dependencies.insert(
-            dep.name().parse().unwrap(),
-            vec![dep.requirement().clone()],
-        );
-    }
-    if let Some(opt_deps) = optional_dependencies {
-        all_dependencies
-            .extend(opt_deps.iter().map(|(k, v)| (k.clone(), v.clone())));
-    }
-
-    // Check if all groups in include and exclude exist
-    let all_groups: HashSet<_> = all_dependencies.keys().cloned().collect();
-    for group in include_set.union(&exclude_set) {
-        // if all_groups.contains(group) where group is not "required"
-        if group != "required" && !all_groups.contains(group) {
-            return Err(Error::DependencyGroupNotFound(group.clone()));
+    // We iterate over all the dependencies.
+    for (group, deps) in all_dependencies {
+        // We check if the group of dependencies is included in the filters.
+        // If no groups are specified for inclusion, we include the group as long as it's not specified for exclusion.
+        // If some groups are specified for inclusion, we include the group only if it's in the inclusion list and not in the exclusion list.
+        if (include.is_empty() && !exclude.contains(group))
+            || (!include.is_empty()
+                && include.contains(group)
+                && !exclude.contains(group))
+        {
+            // If the group passes the filters, we add all its dependencies to the result vector.
+            processed_dependencies.extend_from_slice(deps);
         }
     }
 
-    // Check if a group is both included and excluded
-    let conflict_groups: Vec<String> =
-        include_set.intersection(&exclude_set).cloned().collect();
-    if !conflict_groups.is_empty() {
-        return Err(Error::DependencyGroupConflict(conflict_groups.join(", ")));
-    }
-
-    let processed_dependencies: Vec<Dependency> = all_dependencies
-        .iter()
-        .filter_map(|(group, deps)| {
-            if (include.is_empty() && !exclude.contains(group))
-                || (!include.is_empty()
-                    && include.contains(group)
-                    && !exclude.contains(group))
-            {
-                Some(deps.iter().map(Dependency::from).collect::<Vec<_>>())
-            } else {
-                None
-            }
-        })
-        .flatten()
-        .collect();
-
+    // We return the result vector.
     Ok(processed_dependencies)
 }
 
@@ -153,6 +123,7 @@ fn process_dependencies(
 mod tests {
     use super::*;
     use crate::{fs, ops::test_config, test_resources_dir_path, Verbosity};
+    use std::collections::HashSet;
     use tempfile::tempdir;
 
     #[test]
@@ -185,25 +156,31 @@ mod tests {
         let metadata = config.workspace().current_local_metadata().unwrap();
         let dependencies = metadata.metadata().dependencies();
         let optional_dependencies = metadata.metadata().optional_dependencies();
-        let dependencies: Vec<Dependency> = dependencies
-            .unwrap_or(&[])
-            .iter()
-            .map(|dep| Dependency::from(dep))
-            .collect();
-        let processed_dependencies = process_dependencies(
-            &[],
-            &[],
-            &dependencies,
-            &optional_dependencies,
-        )
-        .unwrap();
 
-        let mut metadata_dependencies: HashSet<String> = HashSet::new();
-        for dep in processed_dependencies {
-            metadata_dependencies.insert(dep.to_string());
+        let mut all_dependencies: IndexMap<String, Vec<Dependency>> =
+            IndexMap::new();
+        for dep in dependencies.unwrap_or(&[]).iter().map(Dependency::from) {
+            all_dependencies
+                .entry("required".to_string())
+                .or_insert_with(Vec::new)
+                .push(dep);
+        }
+        if let Some(opt_deps) = optional_dependencies {
+            for (group, reqs) in opt_deps {
+                let deps = reqs.iter().map(Dependency::from).collect();
+                all_dependencies.insert(group.clone(), deps);
+            }
         }
 
-        assert_eq!(requirements, metadata_dependencies);
+        let processed_dependencies =
+            process_dependencies(&[], &[], &all_dependencies).unwrap();
+
+        let processed_requirements: HashSet<String> = processed_dependencies
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+
+        assert_eq!(requirements, processed_requirements);
     }
 
     #[test]
