@@ -661,7 +661,7 @@ impl FromStr for Dependency {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(s.replace('@', "==")))
+        Ok(Self(s.to_string()))
     }
 }
 

@@ -14,7 +14,7 @@ pub fn remove_project_dependencies(
     let workspace = config.workspace();
     let package = workspace.current_package()?;
     let mut metadata = workspace.current_local_metadata()?;
-
+    println!("metadata: {:?}", metadata.metadata().dependencies());
     // Collect any dependencies to remove from the metadata file.
     let deps = dependency_iter(dependencies)
         .filter(|dep| {
@@ -88,6 +88,7 @@ mod tests {
         test_venv(&ws);
         let venv = ws.resolve_python_environment().unwrap();
         let test_package = Package::from_str("click==8.1.3").unwrap();
+        println!("test_package: {:?}", test_package);
         let test_dep = Dependency::from_str("click==8.1.3").unwrap();
         venv.install_packages(&[&test_dep], &options.install_options, &config)
             .unwrap();
@@ -96,7 +97,7 @@ mod tests {
         let toml_had_package =
             metadata.metadata().contains_dependency(&test_dep).unwrap();
 
-        remove_project_dependencies(&["click".to_string()], &config, &options)
+        remove_project_dependencies(&["Click".to_string()], &config, &options)
             .unwrap();
 
         let ws = config.workspace();

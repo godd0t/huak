@@ -43,13 +43,14 @@ pub fn add_project_dependencies(
             // TODO: Optimize this .find
             if let Some(pkg) = packages.iter().find(|p| p.name() == dep.name())
             {
+                dep.requirement_mut().name = pkg.name().to_string();
                 dep.requirement_mut().version_or_url =
                     Some(VersionOrUrl::VersionSpecifier(
                         VersionSpecifiers::from_str(&format!(
                             "=={}",
                             pkg.version()
                         ))
-                        .expect("package should have a version"),
+                            .expect("package should have a version"),
                     ));
             }
         }

@@ -8,6 +8,8 @@ pub type HuakResult<T> = Result<T, Error>;
 pub enum Error {
     #[error("a problem with argument parsing occurred: {0}")]
     ClapError(#[from] clap::Error),
+    #[error("invalid package url: {0}")]
+    InvalidUrlString(String),
     #[error("dependency group(s): {0}, cannot be both included and excluded")]
     DependencyGroupConflict(String),
     #[error("dependency group(s) not found: {0}")]

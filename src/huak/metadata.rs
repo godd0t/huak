@@ -22,7 +22,8 @@ const DEFAULT_METADATA_FILE_NAME: &str = "pyproject.toml";
 pub struct LocalMetadata {
     /// The core `Metadata`.
     /// See https://packaging.python.org/en/latest/specifications/core-metadata/.
-    metadata: Metadata, // TODO: https://github.com/cnpryer/huak/issues/574
+    metadata: Metadata,
+    // TODO: https://github.com/cnpryer/huak/issues/574
     /// The path to the `LocalMetadata` file.
     path: PathBuf,
 }
@@ -55,6 +56,7 @@ impl LocalMetadata {
                 },
                 project: PyProjectToml::default().project.clone().unwrap(),
                 tool: None,
+                project_url: None,
             },
             path: path.as_ref().to_path_buf(),
         }
@@ -99,10 +101,10 @@ fn pyproject_toml_metadata<T: AsRef<Path>>(
             return Err(Error::InternalError(format!(
                 "{} is missing a project table",
                 path.as_ref().display()
-            )))
+            )));
         }
     }
-    .to_owned();
+        .to_owned();
     let build_system = pyproject_toml.build_system.to_owned();
     let tool = pyproject_toml.tool;
 
@@ -110,6 +112,7 @@ fn pyproject_toml_metadata<T: AsRef<Path>>(
         build_system,
         project,
         tool,
+        project_url: None,
     };
     let local_metadata = LocalMetadata {
         metadata,
@@ -131,6 +134,8 @@ pub struct Metadata {
     project: Project,
     /// The `Tool` table.
     tool: Option<Table>,
+    /// The URL of the `Package`, if it's a URL-based package.
+    project_url: Option<String>,
 }
 
 impl Metadata {
@@ -145,6 +150,14 @@ impl Metadata {
 
     pub fn set_project_name(&mut self, name: String) {
         self.project.name = name
+    }
+
+    pub fn project_url(&self) -> Option<&str> {
+        self.project_url.as_deref()
+    }
+
+    pub fn set_project_url(&mut self, url: String) {
+        self.project_url = Some(url);
     }
 
     pub fn project_version(&self) -> Option<&Version> {
@@ -297,6 +310,7 @@ impl Default for Metadata {
             build_system,
             project,
             tool: None,
+            project_url: None,
         }
     }
 }
@@ -465,7 +479,7 @@ dev = [
             vec![
                 Requirement::from_str("pytest>=6").unwrap(),
                 Requirement::from_str("black==22.8.0").unwrap(),
-                Requirement::from_str("isort==5.12.0").unwrap()
+                Requirement::from_str("isort==5.12.0").unwrap(),
             ]
         );
     }

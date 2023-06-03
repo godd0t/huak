@@ -2,10 +2,11 @@ use crate::{metadata::Metadata, Error, HuakResult};
 use pep440_rs::{Operator, Version, VersionSpecifiers};
 use regex::Regex;
 use std::{fmt::Display, str::FromStr};
+use pep508_rs::Requirement;
 
 const VERSION_OPERATOR_CHARACTERS: [char; 5] = ['=', '~', '!', '>', '<'];
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 /// The `Package` contains data about a Python `Package`.
 ///
 /// A `Package` contains information like the project's name, its version, authors,
@@ -88,9 +89,9 @@ impl FromStr for Package {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // A naive approach to parsing the name and `VersionSpecifiers` from the `&str`.
-        // Find the first character of the `VersionSpecifiers`. Everything prior is considered
-        // the name.
+        let requirement = Requirement::from_str(s)?;
+        println!("requirement: {:?}", requirement);
+        // Check if s is a URL.
         let spec_str = parse_version_specifiers_str(s)
             .expect("package version specifier(s)");
         let name = s.strip_suffix(spec_str).unwrap_or(s).to_string();
@@ -137,7 +138,7 @@ impl PartialEq for Package {
 
 impl Eq for Package {}
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 /// The `PackageId` struct is used to contain `Package`-identifying data.
 struct PackageId {
     /// The `Package` name.

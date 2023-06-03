@@ -62,6 +62,26 @@ impl FromStr for Dependency {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+
+        // if s.contains("http://") || s.contains("https://") {
+        //     // extract the URL part and the name part
+        //     let parts: Vec<&str> = s.split("").collect();
+        //     let name = parts.get(0).ok_or(Error::InvalidUrlString(s.to_string()))?.trim();
+        //     let url = parts.get(1).ok_or(Error::InvalidUrlString(s.to_string()))?.to_string();
+        //     println!("name: {}", name);
+        //     println!("url: {}", url);
+        //     // Construct a Requirement with the URL
+        //     let requirement = Requirement {
+        //         name: name.to_string(),
+        //         extras: None,
+        //         version_or_url: Some(VersionOrUrl::Url(url.clone().parse().unwrap())),
+        //         marker: None,
+        //     };
+        //
+        //     let dependency = Dependency(requirement);
+        //
+        //     return Ok(dependency);
+        // }
         let requirement = Requirement::from_str(s)?;
         let dependency = Dependency(requirement);
 
@@ -107,8 +127,17 @@ where
     I::Item: AsRef<str>,
 {
     iter.into_iter()
-        .filter_map(|item| Dependency::from_str(item.as_ref()).ok())
+        .filter_map(|item| {
+            match Dependency::from_str(item.as_ref()) {
+                Ok(dep) => Some(dep),
+                Err(e) => {
+                    println!("Failed to parse dependency {}: {}", item.as_ref(), e);
+                    None
+                }
+            }
+        })
 }
+
 
 #[cfg(test)]
 mod tests {

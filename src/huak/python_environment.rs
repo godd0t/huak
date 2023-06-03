@@ -129,7 +129,6 @@ impl PythonEnvironment {
         if let Some(v) = options.values.as_ref() {
             cmd.args(v.iter().map(|item| item.as_str()));
         }
-
         config.terminal().run_command(&mut cmd)
     }
 
@@ -180,6 +179,11 @@ impl PythonEnvironment {
     pub fn contains_module(&self, module_name: &str) -> HuakResult<bool> {
         let dir = self.executables_dir_path();
         #[cfg(unix)]
+        // run ls -la
+        let mut cmd = Command::new("ls");
+        cmd.args(["-la", dir.to_str().unwrap()]);
+        let output = cmd.output()?;
+        println!("output: {}", String::from_utf8_lossy(&output.stdout));
         return Ok(dir.join(module_name).exists());
         #[cfg(windows)]
         {
@@ -212,7 +216,6 @@ impl PythonEnvironment {
                 packages.push(Package::from_str(line)?);
             }
         }
-
         Ok(packages)
     }
 
